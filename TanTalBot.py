@@ -1,3 +1,6 @@
+import os
+print("ENV BOT_TOKEN =", os.getenv("BOT_TOKEN"))
+
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils import executor
