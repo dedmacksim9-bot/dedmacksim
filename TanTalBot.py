@@ -1,17 +1,13 @@
 import os
-print("ENV BOT_TOKEN =", os.getenv("BOT_TOKEN"))
-
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils import executor
 from datetime import datetime, timedelta
 
 # ================= НАСТРОЙКИ =================
-import os
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = 7524452966
 CHANNEL_ID = -1003583383646
-
 # =============================================
 
 bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
@@ -50,25 +46,69 @@ def keyboard(post_id: int):
     return kb
 
 
-# ---------- СТАРТ ----------
+# ---------- КОМАНДЫ ----------
 
 @dp.message_handler(commands=["start"])
 async def start(msg: types.Message):
-    await msg.answer("Отправь контент для предложки.")
+    await msg.answer("👋 Привет! Отправь контент для предложки.")
 
 
-# ---------- ОСНОВНОЙ ХЭНДЛЕР ----------
+@dp.message_handler(commands=["rule", "rules"])
+async def rules(msg: types.Message):
+    await msg.answer(
+        "<b>📜 Правила:</b>\n\n"
+        "1. Без спама\n"
+        "2. Без оскорблений\n"
+        "3. Без запрещённого контента\n\n"
+        "Нарушения → мут."
+    )
 
-@dp.message_handler(content_types=types.ContentTypes.ANY)
+
+# ---------- ОСНОВНОЙ ХЭНДЛЕР (БЕЗ КОМАНД) ----------
+
+@dp.message_handler(lambda message: not message.text or not message.text.startswith("/"),
+                    content_types=types.ContentTypes.ANY)
 async def handle(msg: types.Message):
 
-    # ===== Ответ автору =====
+    # ===== Ответ автору (ПОЛНАЯ поддержка медиа) =====
     if msg.from_user.id == ADMIN_ID and msg.from_user.id in reply_mode:
         user_id = reply_mode.pop(msg.from_user.id)
-        await bot.send_message(
-            user_id,
-            "✉️ Сообщение от модерации:\n\n" + (msg.text or "")
-        )
+        prefix = "✉️ Сообщение от модерации:\n\n"
+
+        if msg.text:
+            await bot.send_message(user_id, prefix + msg.text)
+
+        elif msg.photo:
+            await bot.send_photo(
+                user_id,
+                msg.photo[-1].file_id,
+                caption=prefix + (msg.caption or "")
+            )
+
+        elif msg.video:
+            await bot.send_video(
+                user_id,
+                msg.video.file_id,
+                caption=prefix + (msg.caption or "")
+            )
+
+        elif msg.animation:
+            await bot.send_animation(
+                user_id,
+                msg.animation.file_id,
+                caption=prefix + (msg.caption or "")
+            )
+
+        elif msg.document:
+            await bot.send_document(
+                user_id,
+                msg.document.file_id,
+                caption=prefix + (msg.caption or "")
+            )
+
+        elif msg.sticker:
+            await bot.send_sticker(user_id, msg.sticker.file_id)
+
         await msg.answer("✅ Сообщение отправлено")
         return
 
@@ -87,11 +127,7 @@ async def handle(msg: types.Message):
     # ===== ОТПРАВКА АДМИНУ =====
 
     if msg.text:
-        await bot.send_message(
-            ADMIN_ID,
-            header,
-            reply_markup=keyboard(post_id)
-        )
+        await bot.send_message(ADMIN_ID, header, reply_markup=keyboard(post_id))
 
     elif msg.photo:
         await bot.send_photo(
@@ -126,10 +162,7 @@ async def handle(msg: types.Message):
         )
 
     elif msg.sticker:
-        await bot.send_sticker(
-            ADMIN_ID,
-            msg.sticker.file_id
-        )
+        await bot.send_sticker(ADMIN_ID, msg.sticker.file_id)
         await bot.send_message(
             ADMIN_ID,
             f"<b>Новая предложка</b>\n<b>Автор:</b> {author}",
